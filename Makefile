@@ -85,6 +85,7 @@ src/Makefile: openssl/.FOLDER pcre/.FOLDER src/.PATCHED zlib/.FOLDER
 		--with-http_stub_status_module \
 		--with-http_sub_module \
 		--with-http_v2_module \
+		--with-stream \
 		--with-ipv6 \
 		--with-ld-opt="$(LDFLAGS) -static" \
 		--with-mail \
