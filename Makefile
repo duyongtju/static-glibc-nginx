@@ -31,7 +31,7 @@ src: nginx.tar.gz
 	touch $@
 
 src/.PATCHED: src/src/core/nginx.c
-	(cd src && patch -p1 < ../static-glibc-nginx.patch)
+#	(cd src && patch -p1 < ../static-glibc-nginx.patch)
 	touch $@
 
 src/src/core/nginx.c: src
@@ -63,12 +63,10 @@ zlib/.FOLDER: zlib.tar.gz
 src/Makefile: openssl/.FOLDER pcre/.FOLDER src/.PATCHED zlib/.FOLDER
 	(cd src && \
 	./configure \
-		--conf-path=nginx.conf \
-		--pid-path=nginx.pid \
 		--prefix=. \
-		--sbin-path=. \
 		--with-cc="$(CC)" \
-		--with-cc-opt="$(CFLAGS) -static -D NGX_HAVE_DLOPEN=0" \
+		--with-cc-opt="$(CFLAGS) -static -static-libgcc -D NGX_HAVE_DLOPEN=0" \
+		--with-ld-opt="$(LDFLAGS) -static" \
 		--with-cpu-opt=generic \
 		--with-http_addition_module \
 		--with-http_auth_request_module \
@@ -86,8 +84,6 @@ src/Makefile: openssl/.FOLDER pcre/.FOLDER src/.PATCHED zlib/.FOLDER
 		--with-http_sub_module \
 		--with-http_v2_module \
 		--with-stream \
-		--with-ipv6 \
-		--with-ld-opt="$(LDFLAGS) -static" \
 		--with-mail \
 		--with-mail_ssl_module \
 		--with-openssl-opt="-UDSO_DLFCN" \
