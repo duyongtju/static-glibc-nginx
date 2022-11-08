@@ -29,10 +29,10 @@ index 3213527..f61aed7 100644
 -        }
 -
 -        ccf->group = grp->gr_gid;
-+        ngx_set_errno(ENOSYS);
++        ngx_set_errno(0);
 +        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
 +                      "getpwnam(\"" NGX_USER "\") disabled for static build");
-+        return NGX_CONF_ERROR;
++        return NGX_CONF_OK;
      }
  
  
@@ -73,11 +73,11 @@ index 3213527..f61aed7 100644
 -    ccf->group = grp->gr_gid;
 -
 -    return NGX_CONF_OK;
-+    ngx_set_errno(ENOSYS);
++    ngx_set_errno(0);
 +    ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
 +                       "getpwnam(\"%s\") disabled for static build", value[1].data);
-+    return NGX_CONF_ERROR;
- 
++    return NGX_CONF_OK;
+
  #endif
  }
 diff --git a/src/core/ngx_inet.c b/src/core/ngx_inet.c
@@ -215,8 +215,8 @@ index 96a04fd..4ab2f7f 100644
 -            }
 -        }
 -
-+        u->err = "gethostbyname disabled for static build";
-+        return NGX_ERROR;
++
++        return NGX_OK;
      } else {
  
          /* MP: ngx_shared_palloc() */
