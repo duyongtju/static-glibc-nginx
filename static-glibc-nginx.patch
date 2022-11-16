@@ -1,8 +1,8 @@
 diff --git a/src/core/nginx.c b/src/core/nginx.c
-index 3213527..f61aed7 100644
+index 48a20e9..83d6c6e 100644
 --- a/src/core/nginx.c
 +++ b/src/core/nginx.c
-@@ -1030,29 +1030,10 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
+@@ -1134,29 +1134,10 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
  #if !(NGX_WIN32)
  
      if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
@@ -20,7 +20,7 @@ index 3213527..f61aed7 100644
 -        ccf->username = NGX_USER;
 -        ccf->user = pwd->pw_uid;
 -
--        ngx_set_errno(0);
+         ngx_set_errno(0);
 -        grp = getgrnam(NGX_GROUP);
 -        if (grp == NULL) {
 -            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -29,14 +29,13 @@ index 3213527..f61aed7 100644
 -        }
 -
 -        ccf->group = grp->gr_gid;
-+        ngx_set_errno(0);
-+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-+                      "getpwnam(\"" NGX_USER "\") disabled for static build");
++//        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
++//                      "getpwnam(\"" NGX_USER "\") disabled for static build, run as super user");
 +        return NGX_CONF_OK;
      }
  
  
-@@ -1122,9 +1103,6 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+@@ -1226,9 +1207,6 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
  
      ngx_core_conf_t  *ccf = conf;
  
@@ -46,11 +45,10 @@ index 3213527..f61aed7 100644
      ngx_str_t        *value;
  
      if (ccf->user != (uid_t) NGX_CONF_UNSET_UINT) {
-@@ -1143,29 +1121,10 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
- 
+@@ -1248,27 +1226,8 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      ccf->username = (char *) value[1].data;
  
--    ngx_set_errno(0);
+     ngx_set_errno(0);
 -    pwd = getpwnam((const char *) value[1].data);
 -    if (pwd == NULL) {
 -        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
@@ -72,27 +70,24 @@ index 3213527..f61aed7 100644
 -
 -    ccf->group = grp->gr_gid;
 -
--    return NGX_CONF_OK;
-+    ngx_set_errno(0);
-+    ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
-+                       "getpwnam(\"%s\") disabled for static build", value[1].data);
-+    return NGX_CONF_OK;
-
++//    ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
++//                       "getpwnam(\"%s\") disabled for static build", value[1].data);
+     return NGX_CONF_OK;
+ 
  #endif
- }
 diff --git a/src/core/ngx_inet.c b/src/core/ngx_inet.c
-index 96a04fd..4ab2f7f 100644
+index 4228504..d99c71c 100644
 --- a/src/core/ngx_inet.c
 +++ b/src/core/ngx_inet.c
-@@ -1111,95 +1111,9 @@
+@@ -1111,95 +1111,9 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
  }
  
  
 -#if (NGX_HAVE_GETADDRINFO && NGX_HAVE_INET6)
 -
--ngx_int_t
--ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
--{
+ ngx_int_t
+ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
+ {
 -    u_char           *host;
 -    ngx_uint_t        n;
 -    struct addrinfo   hints, *res, *rp;
@@ -171,16 +166,16 @@ index 96a04fd..4ab2f7f 100644
 -
 -#else /* !NGX_HAVE_GETADDRINFO || !NGX_HAVE_INET6 */
 -
- ngx_int_t
- ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
- {
+-ngx_int_t
+-ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
+-{
 -    u_char              *host;
 -    ngx_uint_t           i, n;
 -    struct hostent      *h;
      struct sockaddr_in   sin;
  
      /* AF_INET only */
-@@ -1210,37 +1124,8 @@
+@@ -1210,37 +1124,8 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
      sin.sin_addr.s_addr = ngx_inet_addr(u->host.data, u->host.len);
  
      if (sin.sin_addr.s_addr == INADDR_NONE) {
@@ -214,13 +209,12 @@ index 96a04fd..4ab2f7f 100644
 -                return NGX_ERROR;
 -            }
 -        }
--
-+
+ 
 +        return NGX_OK;
      } else {
  
          /* MP: ngx_shared_palloc() */
-@@ -1256,8 +1141,6 @@
+@@ -1256,8 +1141,6 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
      return NGX_OK;
  }
  
@@ -230,19 +224,119 @@ index 96a04fd..4ab2f7f 100644
  static ngx_int_t
  ngx_inet_add_addr(ngx_pool_t *pool, ngx_url_t *u, struct sockaddr *sockaddr,
 diff --git a/src/os/unix/ngx_process_cycle.c b/src/os/unix/ngx_process_cycle.c
-index 5817a2c..8262993 100644
+index b31485f..cec5fb9 100644
 --- a/src/os/unix/ngx_process_cycle.c
 +++ b/src/os/unix/ngx_process_cycle.c
-@@ -833,12 +833,6 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
-             exit(2);
+@@ -794,59 +794,59 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
          }
+     }
  
+-    if (geteuid() == 0) {
+-        if (setgid(ccf->group) == -1) {
+-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+-                          "setgid(%d) failed", ccf->group);
+-            /* fatal */
+-            exit(2);
+-        }
+-
 -        if (initgroups(ccf->username, ccf->group) == -1) {
 -            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
 -                          "initgroups(%s, %d) failed",
 -                          ccf->username, ccf->group);
 -        }
 -
- #if (NGX_HAVE_PR_SET_KEEPCAPS && NGX_HAVE_CAPABILITIES)
-         if (ccf->transparent && ccf->user) {
-             if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
+-#if (NGX_HAVE_PR_SET_KEEPCAPS && NGX_HAVE_CAPABILITIES)
+-        if (ccf->transparent && ccf->user) {
+-            if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
+-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+-                              "prctl(PR_SET_KEEPCAPS, 1) failed");
+-                /* fatal */
+-                exit(2);
+-            }
+-        }
+-#endif
+-
+-        if (setuid(ccf->user) == -1) {
+-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+-                          "setuid(%d) failed", ccf->user);
+-            /* fatal */
+-            exit(2);
+-        }
+-
+-#if (NGX_HAVE_CAPABILITIES)
+-        if (ccf->transparent && ccf->user) {
+-            struct __user_cap_data_struct    data;
+-            struct __user_cap_header_struct  header;
+-
+-            ngx_memzero(&header, sizeof(struct __user_cap_header_struct));
+-            ngx_memzero(&data, sizeof(struct __user_cap_data_struct));
+-
+-            header.version = _LINUX_CAPABILITY_VERSION_1;
+-            data.effective = CAP_TO_MASK(CAP_NET_RAW);
+-            data.permitted = data.effective;
+-
+-            if (syscall(SYS_capset, &header, &data) == -1) {
+-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+-                              "capset() failed");
+-                /* fatal */
+-                exit(2);
+-            }
+-        }
+-#endif
+-    }
++//    if (geteuid() == 0) {
++//        if (setgid(ccf->group) == -1) {
++//            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
++//                          "setgid(%d) failed", ccf->group);
++//            /* fatal */
++//            exit(2);
++//        }
++//
++//        if (initgroups(ccf->username, ccf->group) == -1) {
++//            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
++//                          "initgroups(%s, %d) failed",
++//                          ccf->username, ccf->group);
++//        }
++//
++//#if (NGX_HAVE_PR_SET_KEEPCAPS && NGX_HAVE_CAPABILITIES)
++//        if (ccf->transparent && ccf->user) {
++//            if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
++//                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
++//                              "prctl(PR_SET_KEEPCAPS, 1) failed");
++//                /* fatal */
++//                exit(2);
++//            }
++//        }
++//#endif
++//
++//        if (setuid(ccf->user) == -1) {
++//            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
++//                          "setuid(%d) failed", ccf->user);
++//            /* fatal */
++//            exit(2);
++//        }
++//
++//#if (NGX_HAVE_CAPABILITIES)
++//        if (ccf->transparent && ccf->user) {
++//            struct __user_cap_data_struct    data;
++//            struct __user_cap_header_struct  header;
++//
++//            ngx_memzero(&header, sizeof(struct __user_cap_header_struct));
++//            ngx_memzero(&data, sizeof(struct __user_cap_data_struct));
++//
++//            header.version = _LINUX_CAPABILITY_VERSION_1;
++//            data.effective = CAP_TO_MASK(CAP_NET_RAW);
++//            data.permitted = data.effective;
++//
++//            if (syscall(SYS_capset, &header, &data) == -1) {
++//                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
++//                              "capset() failed");
++//                /* fatal */
++//                exit(2);
++//            }
++//        }
++//#endif
++//    }
+ 
+     if (worker >= 0) {
+         cpu_affinity = ngx_get_cpu_affinity(worker);
